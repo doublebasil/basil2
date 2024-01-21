@@ -6,6 +6,7 @@ add_executable(${PROJECT_NAME}
     settings_reader/settings_reader.cpp
     QR-Code-generator/qrcodegen.c
     pump/pump.cpp
+    ntp/ntp.cpp
     # Add other cpp files here, including their directory, e.g.
     # webserver/webserver.cpp
     )
@@ -22,8 +23,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/QR-Code-generator
     ${CMAKE_CURRENT_LIST_DIR}/system
     ${CMAKE_CURRENT_LIST_DIR}/pump
-    # Add the folders that are needed for compile, e.g.
-    # ${CMAKE_CURRENT_LIST_DIR}/webserver
+    ${CMAKE_CURRENT_LIST_DIR}/ntp
     )
 
 target_link_libraries(${PROJECT_NAME}

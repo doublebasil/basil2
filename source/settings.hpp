@@ -40,7 +40,14 @@
 
 /* --- TIMING AND BEHAVIOURS --- */
 #define MAIN_LOOP_TIME_PERIOD_MS            ( 50LL )
-
+#define REBOOT_DELAY_MS                     ( 10ULL * 60ULL * 1000ULL ) // 10 minutes
+#define MAX_WIFI_CONNECTION_ATTEMPTS        ( 3U )
+#define WIFI_CONNECTION_RETRY_DELAY_MS      ( 30ULL * 1000ULL ) // 30 seconds
+#define MESSAGE_READ_DELAY_MS               ( 2000ULL )
+// #define MESSAGE_READ_DELAY_MS               ( 0ULL )
+#define NTP_RESEND_DELAY_US                 ( 10LL * 1000LL * 1000LL )
+#define NTP_MAX_ATTEMPTS                    ( 5 )
+#define DNS_MAX_ATTEMPTS                    ( 5 )
 
 /* --- TYPEDEFS --- */
 typedef enum {

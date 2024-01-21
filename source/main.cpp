@@ -22,9 +22,18 @@ int main( void )
 
     if( system_initialise( &globalData ) != 0 )
     {
-        sleep_ms( 10ULL * 60ULL * 1000ULL ); // Wait 10 minutes
+        oled_terminalWrite( "" );
+        oled_terminalWrite( "SYS REBOOT" );
+        oled_terminalWrite( "SCHEDULED" );
+        sleep_ms( REBOOT_DELAY_MS );
         system_reboot(); // Reboot the board
     }
 
+    while( true )
+    {
+        sleep_ms( 50 );
+    }
+
+    system_reboot(); // This should never be reached
     return 0;
 }

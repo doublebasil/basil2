@@ -8,6 +8,7 @@
 #include "pump.hpp"
 #include "hardware/watchdog.h"
 #include "settings_reader.hpp"
+#include "ntp.hpp"
 
 /* INITIALISATION MODULE SCOPE FUNCTION PROTOTYPES */
 static inline void m_initialiseOled( void );
@@ -45,10 +46,60 @@ int system_initialise( t_globalData* globalDataPtr )
         m_sdFailedReadMessage();
         return 1;
     }
-    else
+    // If sd card reading was successful:
+    m_sdSuccessfulReadMessage( &(globalDataPtr->sdCardSettings) );
+    sleep_ms( MESSAGE_READ_DELAY_MS );
+
+    // Attempt to connect to WiFi
+    uint8_t attempts = 0U;
+    int wifiResult;
+    while( attempts < MAX_WIFI_CONNECTION_ATTEMPTS )
     {
-        m_sdSuccessfulReadMessage( &(globalDataPtr->sdCardSettings) );
+        oled_terminalWrite( "" );
+        oled_terminalWrite( "Connecting to:" );
+        oled_terminalWrite( globalDataPtr->sdCardSettings.wifiSsid );
+
+        wifiResult = cyw43_arch_wifi_connect_timeout_ms( 
+            globalDataPtr->sdCardSettings.wifiSsid, 
+            globalDataPtr->sdCardSettings.wifiPassword, 
+            CYW43_AUTH_WPA2_AES_PSK, 
+            30000 );
+
+        if( wifiResult == 0 )
+            break;
+
+        ++attempts;
+        oled_terminalWrite( "Failed" );
+        oled_terminalWrite( "Waiting before" );
+        oled_terminalWrite( "retry..." );
+        sleep_ms( WIFI_CONNECTION_RETRY_DELAY_MS );
     }
+    if( wifiResult != 0 )
+    {
+        oled_terminalWrite( "Max connection" );
+        oled_terminalWrite( "failures reached" );
+        return 1;
+    }
+
+    oled_terminalWrite( "" );
+    oled_terminalWrite( "Connection success" );
+    sleep_ms( MESSAGE_READ_DELAY_MS );
+
+    oled_terminalWrite( "" );
+    oled_terminalWrite( "Connect to NTP" );
+    if( ntp_doTheNtpStuff() != 0 )
+    {
+        oled_terminalWrite( "NTP process failed" );
+        return 1;
+    }
+
+    oled_terminalWrite( "" );
+    oled_terminalWrite( "Sys init done" );
+
+    sleep_ms( MESSAGE_READ_DELAY_MS );
+
+    oled_terminalDeinit();
+    oled_clear();
 
     return 0;
 }

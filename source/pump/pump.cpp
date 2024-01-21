@@ -34,7 +34,6 @@ void pump_init( uint8_t pumpControlPin, uint8_t pumpAdcPin )
     m_pumpControlPin = pumpControlPin;
 
     // Initialise the ADC
-    adc_init();
     if( pumpAdcPin == 26 )
     {
         adc_gpio_init( pumpAdcPin );
