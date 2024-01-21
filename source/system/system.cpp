@@ -20,7 +20,9 @@ static inline void m_initialiseRtc( void );
 static inline void m_sdSuccessfulReadMessage( t_sdCardSettings* sdCardSettingsPtr );
 static inline void m_sdFailedReadMessage( void );
 /* SYSTEM UPDATE HELPER FUNCTIONS */
-
+static void m_idleSetup( t_globalData* globalDataPtr );
+static void m_infoSetup( t_globalData* globalDataPtr );
+static void m_infoUpdate( t_globalData* globalDataPtr );
 
 /* PUBLIC METHOD IMPLEMENTATION */
 int system_initialise( t_globalData* globalDataPtr )
@@ -108,6 +110,9 @@ int system_initialise( t_globalData* globalDataPtr )
     oled_terminalDeinit();
     oled_clear();
 
+    globalDataPtr->currentState = e_sysState_showInfo;
+    globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
+
     return 0;
 }
 
@@ -122,16 +127,51 @@ void system_update( t_globalData* globalDataPtr )
 {
     bool infoButtonState = gpio_get( INFO_BUTTON_PIN );
     bool waterButtonState = gpio_get( WATER_BUTTON_PIN );
-    if( infoButtonState )
-    {
-        globalDataPtr->infoButtonPressTimestamp = get_absolute_time();
-    }
+
     if( waterButtonState )
+        globalDataPtr->currentState = e_sysState_watering;
+    else if( infoButtonState )
     {
-        globalDataPtr->waterButtonPressTimestamp = get_absolute_time();
+        globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
+        globalDataPtr->currentState = e_sysState_showInfo;
     }
     
-
+    switch( globalDataPtr->currentState )
+    {
+        case e_sysState_idle:
+        {
+            if( globalDataPtr->previousState != e_sysState_idle )
+            {
+                m_idleSetup( globalDataPtr );
+                globalDataPtr->previousState = e_sysState_idle;
+            }
+            else
+            {
+                // Do nothing
+            }
+        }
+        break;
+        case e_sysState_showInfo:
+        {
+            if( globalDataPtr->previousState != e_sysState_showInfo )
+            {
+                m_infoSetup( globalDataPtr );
+                globalDataPtr->previousState = e_sysState_showInfo;
+            }
+            else
+            {
+                m_infoUpdate( globalDataPtr );
+            }
+        }
+        break;
+        default:
+        case e_sysState_notSet:
+        {
+            globalDataPtr->currentState = e_sysState_idle;
+            globalDataPtr->previousState = e_sysState_notSet;
+        }
+        break;
+    }
 
 }
 
@@ -235,4 +275,35 @@ static inline void m_sdFailedReadMessage( void )
 }
 
 /* SYSTEM UPDATE HELPER FUNCTIONS */
+static void m_idleSetup( t_globalData* globalDataPtr )
+{
+    oled_deinitAll();
+    oled_clear();
+    // ARE THERE ANY WARNINGS TO DISPLAY?
+}
+
+static void m_infoSetup( t_globalData* globalDataPtr )
+{
+    oled_deinitAll();
+    oled_clear();
+    oled_terminalInit( 12, TERMINAL_INFO_COLOUR );
+    oled_terminalWrite( "INFO" );
+}
+
+static void m_infoUpdate( t_globalData* globalDataPtr )
+{
+    // Check for timeout
+    if( ( is_nil_time( globalDataPtr->stateTimeout ) == false )
+        && ( absolute_time_diff_us( get_absolute_time(), globalDataPtr->stateTimeout ) < 0 ) )
+    {
+        // Timeout
+        globalDataPtr->currentState = e_sysState_idle;
+        return;
+    }
+
+    oled_terminalSetLine( 2 );
+    char text[20];
+    snprintf( text, sizeof( text ), "%ld", to_ms_since_boot( get_absolute_time() ) );
+    oled_terminalWrite( text );
+}
 

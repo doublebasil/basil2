@@ -36,7 +36,7 @@
 /* --- TERMINAL --- */
 #define TERMINAL_FONT_12                    ( 12 )
 #define TERMINAL_INIT_COLOUR                ( RGB565_FOREST_GREEN )
-#define TERMINAL_WIFI_COLOUR                ( RGB565_PURE_BLUE )
+#define TERMINAL_INFO_COLOUR                ( RGB565_PURE_BLUE )
 
 /* --- TIMING AND BEHAVIOURS --- */
 #define MAIN_LOOP_TIME_PERIOD_MS            ( 50LL )
@@ -48,6 +48,7 @@
 #define NTP_RESEND_DELAY_US                 ( 10LL * 1000LL * 1000LL )
 #define NTP_MAX_ATTEMPTS                    ( 5 )
 #define DNS_MAX_ATTEMPTS                    ( 5 )
+#define STATE_TIMEOUT_DELAY_MS              ( 15000ULL )
 
 /* --- TYPEDEFS --- */
 typedef enum {
@@ -95,11 +96,13 @@ typedef struct {
     t_wifiData wifiData;
     /* STATE MODEL */
     t_tankState tankState = e_tankState_unknown;
-    t_sysState m_currentState = e_sysState_showInfo;
-    t_sysState m_previousState = e_sysState_notSet;
+    t_sysState currentState = e_sysState_notSet;
+    t_sysState previousState = e_sysState_notSet;
     /* TIMESTAMPS */
-    absolute_time_t waterButtonPressTimestamp = nil_time;
-    absolute_time_t infoButtonPressTimestamp = nil_time;
+    absolute_time_t stateTimeout = nil_time;
+    absolute_time_t nextWaterTimestamp = nil_time;
+    absolute_time_t nextRecyclingBindayTimestamp = nil_time;
+    absolute_time_t nextLandfillBindayTimestamp = nil_time;
 } t_globalData;
 
 #endif // SETTINGS_HPP
