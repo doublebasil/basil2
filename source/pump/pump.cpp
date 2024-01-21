@@ -74,6 +74,9 @@ void pump_run( t_globalData* globalDataPtr )
     uint16_t adcValue = adc_read();
     bool emergencyStop = false;
 
+    // Clear the display
+    oled_deinitAll();
+    oled_clear();
     // Draw the redline
     m_drawRedline( globalDataPtr, ADC_THRESHOLD );
     // Init the loading circle, to be used as a motor gauge
@@ -111,7 +114,10 @@ void pump_run( t_globalData* globalDataPtr )
     gpio_put( m_pumpControlPin, 0 );
 
     // UPDATE EXTERNAL DATA HERE
-    (void) emergencyStop;
+    if( emergencyStop == true )
+        globalDataPtr->tankState = e_tankState_dry;
+    else
+        globalDataPtr->tankState = e_tankState_ok;
 
     // Update the loading gauge
     oled_loadingCircleDisplay( (uint8_t) ( ( (uint32_t) adcValue * 252UL ) / 0x0FFFUL ) );

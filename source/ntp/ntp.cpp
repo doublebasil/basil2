@@ -205,6 +205,8 @@ static void m_ntpSendRequest( void )
     snprintf( textBuffer, sizeof( textBuffer ), "%s", ipaddr_ntoa( &m_ntpState.ntpServerAddress ) );
     oled_terminalWrite( textBuffer );
     sleep_ms( MESSAGE_READ_DELAY_MS );
+
+    oled_terminalWrite( "" );
     oled_terminalWrite( "Sending request..." );
 
     cyw43_arch_lwip_begin();
@@ -215,7 +217,6 @@ static void m_ntpSendRequest( void )
     udp_sendto( m_ntpState.ntpPcb, pb, &m_ntpState.ntpServerAddress, NTP_PORT );
     pbuf_free( pb );
     cyw43_arch_lwip_end();
-
 }
 
 static void m_dnsCallback( const char *name, const ip_addr_t *ipaddress, void *arg )

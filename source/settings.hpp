@@ -19,8 +19,8 @@
 #define PUMP_CONTROL_PIN                    ( 21 )
 #define PUMP_ADC_PIN                        ( 26 )
 /* INPUT BUTTONS */
-#define LEFT_BUTTON_PIN                     ( 3 )
-#define RIGHT_BUTTON_PIN                    ( 2 )
+#define WATER_BUTTON_PIN                    ( 3 )
+#define INFO_BUTTON_PIN                     ( 2 )
 /* SD CARD SETTINGS */
 // Settings for the SD card are defined in source/no-OS-FatFS-SD-SPI-Rpi-Pico/FatFs_SPI/sd_driver/hw_config.c
 
@@ -80,6 +80,13 @@ typedef struct {
     bool rtcSetSuccess = false;
 } t_wifiData;
 
+typedef enum {
+    e_sysState_notSet,
+    e_sysState_idle,
+    e_sysState_showInfo,
+    e_sysState_watering,
+} t_sysState; // Return of the dreaded state machine
+
 /* GLOBAL DATA STRUCT */
 typedef struct {
     /* SUB STRUCTS */
@@ -88,6 +95,11 @@ typedef struct {
     t_wifiData wifiData;
     /* STATE MODEL */
     t_tankState tankState = e_tankState_unknown;
+    t_sysState m_currentState = e_sysState_showInfo;
+    t_sysState m_previousState = e_sysState_notSet;
+    /* TIMESTAMPS */
+    absolute_time_t waterButtonPressTimestamp = nil_time;
+    absolute_time_t infoButtonPressTimestamp = nil_time;
 } t_globalData;
 
 #endif // SETTINGS_HPP

@@ -19,6 +19,8 @@ static inline void m_initialiseSdCardDriver( void );
 static inline void m_initialiseRtc( void );
 static inline void m_sdSuccessfulReadMessage( t_sdCardSettings* sdCardSettingsPtr );
 static inline void m_sdFailedReadMessage( void );
+/* SYSTEM UPDATE HELPER FUNCTIONS */
+
 
 /* PUBLIC METHOD IMPLEMENTATION */
 int system_initialise( t_globalData* globalDataPtr )
@@ -38,6 +40,11 @@ int system_initialise( t_globalData* globalDataPtr )
     m_initialiseSdCardDriver();
     // Init the RTC (Real Time Clock)
     m_initialiseRtc();
+    // Init the buttons
+    gpio_init( INFO_BUTTON_PIN );
+    gpio_set_dir( INFO_BUTTON_PIN, GPIO_IN );
+    gpio_init( WATER_BUTTON_PIN );
+    gpio_set_dir( WATER_BUTTON_PIN, GPIO_IN );
     // Now attempt to read the SD card
     oled_terminalWrite( "" );
     oled_terminalWrite( "Reading SDC..." );
@@ -109,6 +116,23 @@ void system_reboot( void )
     // Reboot the board in 1 ms using the watchdog
     watchdog_enable( 1, false );
     for( ;; ) {}
+}
+
+void system_update( t_globalData* globalDataPtr )
+{
+    bool infoButtonState = gpio_get( INFO_BUTTON_PIN );
+    bool waterButtonState = gpio_get( WATER_BUTTON_PIN );
+    if( infoButtonState )
+    {
+        globalDataPtr->infoButtonPressTimestamp = get_absolute_time();
+    }
+    if( waterButtonState )
+    {
+        globalDataPtr->waterButtonPressTimestamp = get_absolute_time();
+    }
+    
+
+
 }
 
 /* INITIALISATION MODULE SCOPE FUNCITON IMPLEMENTATION  */
@@ -209,3 +233,6 @@ static inline void m_sdFailedReadMessage( void )
     oled_terminalWrite( "FAILED to read" );
     oled_terminalWrite( "settings" );
 }
+
+/* SYSTEM UPDATE HELPER FUNCTIONS */
+

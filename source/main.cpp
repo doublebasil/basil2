@@ -17,7 +17,6 @@ int main( void )
     // Initialise the stdio
     stdio_init_all();
 
-    // Create the global data struct
     t_globalData globalData;
 
     if( system_initialise( &globalData ) != 0 )
@@ -31,6 +30,7 @@ int main( void )
 
     while( true )
     {
+        system_update( &globalData );
         sleep_ms( 50 );
     }
 
