@@ -9,6 +9,12 @@
 #include "hardware/watchdog.h"
 #include "settings_reader.hpp"
 #include "ntp.hpp"
+#include "pico/time.h"
+// #include "pico/util/datetime.h"
+
+char m_text1[30];
+char m_text2[30];
+datetime_t m_datetime;
 
 /* INITIALISATION MODULE SCOPE FUNCTION PROTOTYPES */
 static inline void m_initialiseOled( void );
@@ -23,6 +29,11 @@ static inline void m_sdFailedReadMessage( void );
 static void m_idleSetup( t_globalData* globalDataPtr );
 static void m_infoSetup( t_globalData* globalDataPtr );
 static void m_infoUpdate( t_globalData* globalDataPtr );
+/* OTHER */
+static void m_dayOfTheWeek( char* strPrt, uint8_t strLen, uint8_t dayOfTheWeek );
+static time_t m_datetimeToEpoch( datetime_t* datetimePtr );
+static bool m_checkRecyclingBinday( t_globalData* globalDataPtr );
+static bool m_checkLandfillBinday( t_globalData* globalDataPtr );
 
 /* PUBLIC METHOD IMPLEMENTATION */
 int system_initialise( t_globalData* globalDataPtr )
@@ -102,6 +113,9 @@ int system_initialise( t_globalData* globalDataPtr )
         return 1;
     }
 
+    m_checkLandfillBinday( globalDataPtr );
+    m_checkRecyclingBinday( globalDataPtr );
+
     oled_terminalWrite( "" );
     oled_terminalWrite( "Sys init done" );
 
@@ -132,7 +146,6 @@ void system_update( t_globalData* globalDataPtr )
         globalDataPtr->currentState = e_sysState_watering;
     else if( infoButtonState )
     {
-        globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
         globalDataPtr->currentState = e_sysState_showInfo;
     }
     
@@ -286,8 +299,26 @@ static void m_infoSetup( t_globalData* globalDataPtr )
 {
     oled_deinitAll();
     oled_clear();
+
+    if( m_checkLandfillBinday( globalDataPtr ) )
+    {
+        // Display the landfill bin image
+        oled_sdWriteImage( "greenbin128.txt", 0, 0 );
+        sleep_ms( IMAGE_DISPLAY_TIME_MS );
+        oled_clear();
+    }
+    if( m_checkRecyclingBinday( globalDataPtr ) )
+    {
+        // Display the recycling bin image
+        oled_sdWriteImage( "bluebin128.txt", 0, 0 );
+        sleep_ms( IMAGE_DISPLAY_TIME_MS );
+        oled_clear();
+    }
+
     oled_terminalInit( 12, TERMINAL_INFO_COLOUR );
     oled_terminalWrite( "INFO" );
+
+    globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
 }
 
 static void m_infoUpdate( t_globalData* globalDataPtr )
@@ -300,10 +331,98 @@ static void m_infoUpdate( t_globalData* globalDataPtr )
         globalDataPtr->currentState = e_sysState_idle;
         return;
     }
+    // Check for button presses
+    if( gpio_get( INFO_BUTTON_PIN ) )
+    {
+        // Extend the timeout
+        globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
+    }
 
+    rtc_get_datetime( &m_datetime );
+    m_dayOfTheWeek( &m_text2[0], sizeof( m_text2 ), m_datetime.dotw );
+    snprintf( m_text1, sizeof( m_text1 ), "%s %02d/%02d/%02d",
+        m_text2, m_datetime.day, m_datetime.month, ( m_datetime.year % 100 ) );
     oled_terminalSetLine( 2 );
-    char text[20];
-    snprintf( text, sizeof( text ), "%ld", to_ms_since_boot( get_absolute_time() ) );
-    oled_terminalWrite( text );
+    oled_terminalWrite( m_text1 );
+
+    snprintf( m_text1, sizeof( m_text1 ), "%02d:%02d:%02d",
+        m_datetime.hour, m_datetime.min, m_datetime.sec );
+    oled_terminalSetLine( 3 );
+    oled_terminalWrite( m_text1 );
+
+    snprintf( m_text1, sizeof( m_text1 ), "%lld", m_datetimeToEpoch( &m_datetime ) );
+    oled_terminalSetLine( 5 );
+    oled_terminalWrite( m_text1 );
+}
+
+/* OTHER */
+static void m_dayOfTheWeek( char* strPrt, uint8_t strLen, uint8_t dayOfTheWeek )
+{
+    switch( dayOfTheWeek )
+    {
+        case 0:
+        {
+            snprintf( strPrt, strLen, "Sunday" );
+        }
+        break;
+        case 1:
+        {
+            snprintf( strPrt, strLen, "Monday" );
+        }
+        break;
+        case 2:
+        {
+            snprintf( strPrt, strLen, "Tuesday" );
+        }
+        break;
+        case 3:
+        {
+            snprintf( strPrt, strLen, "Wednesday" );
+        }
+        break;
+        case 4:
+        {
+            snprintf( strPrt, strLen, "Thursday" );
+        }
+        break;
+        case 5:
+        {
+            snprintf( strPrt, strLen, "Friday" );
+        }
+        break;
+        case 6:
+        {
+            snprintf( strPrt, strLen, "Saturday" );
+        }
+        break;
+        default:
+        {
+            snprintf( strPrt, strLen, "ERR" );
+        }
+    }
+}
+
+static time_t m_datetimeToEpoch( datetime_t* datetimePtr )
+{
+    struct tm timeinfo;
+
+    timeinfo.tm_year = datetimePtr->year - 1900;  // years since 1900
+    timeinfo.tm_mon = datetimePtr->month - 1;     // months since January [0,11]
+    timeinfo.tm_mday = datetimePtr->day;          // day of the month [1,31]
+    timeinfo.tm_hour = datetimePtr->hour;         // hours since midnight [0,23]
+    timeinfo.tm_min = datetimePtr->min;           // minutes after the hour [0,59]
+    timeinfo.tm_sec = datetimePtr->sec;
+
+    return mktime( &timeinfo );
+}
+
+static bool m_checkRecyclingBinday( t_globalData* globalDataPtr )
+{
+    return false; // TODO
+}
+
+static bool m_checkLandfillBinday( t_globalData* globalDataPtr )
+{
+    return false; // TODO
 }
 

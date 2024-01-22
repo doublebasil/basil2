@@ -49,6 +49,7 @@
 #define NTP_MAX_ATTEMPTS                    ( 5 )
 #define DNS_MAX_ATTEMPTS                    ( 5 )
 #define STATE_TIMEOUT_DELAY_MS              ( 15000ULL )
+#define IMAGE_DISPLAY_TIME_MS               ( 5000ULL )
 
 /* --- TYPEDEFS --- */
 typedef enum {
@@ -88,6 +89,13 @@ typedef enum {
     e_sysState_watering,
 } t_sysState; // Return of the dreaded state machine
 
+typedef struct {
+    uint8_t day; // 1 - 31
+    uint8_t month; // 1 - 12
+    uint8_t year;
+    time_t unixEpoch = 0;;
+} t_binday;
+
 /* GLOBAL DATA STRUCT */
 typedef struct {
     /* SUB STRUCTS */
@@ -100,9 +108,9 @@ typedef struct {
     t_sysState previousState = e_sysState_notSet;
     /* TIMESTAMPS */
     absolute_time_t stateTimeout = nil_time;
-    absolute_time_t nextWaterTimestamp = nil_time;
-    absolute_time_t nextRecyclingBindayTimestamp = nil_time;
-    absolute_time_t nextLandfillBindayTimestamp = nil_time;
+    // absolute_time_t nextWater = nil_time;
+    t_binday landfill;
+    t_binday recycling;
 } t_globalData;
 
 #endif // SETTINGS_HPP
