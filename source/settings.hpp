@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "pico/time.h"
 
 /* --- HARDWARE DEFINITIONS --- */
 /* OLED */
@@ -64,6 +65,11 @@ typedef struct {
     char wifiPassword[WIFI_PASSWORD_MAX_LEN];
     int32_t wateringTimes[MAX_NUMBER_OF_WATERING_TIMES]; // Seconds since midnight, negative if unused, only used if RTC is set via NTP server
     uint16_t wateringDurationMs;
+    // Bin days, unix time stamps for 9AM on binday
+    uint8_t landfillEntried; // Size of malloc
+    uint64_t* landfillTimes;
+    uint8_t recyclingEntried; // Size of malloc
+    uint64_t* recyclingTimes;
 } t_sdCardSettings;
 
 typedef struct {
@@ -93,7 +99,7 @@ typedef struct {
     uint8_t day; // 1 - 31
     uint8_t month; // 1 - 12
     uint8_t year;
-    time_t unixEpoch = 0;;
+    time_t unixEpoch = 0;
 } t_binday;
 
 /* GLOBAL DATA STRUCT */
@@ -109,8 +115,8 @@ typedef struct {
     /* TIMESTAMPS */
     absolute_time_t stateTimeout = nil_time;
     // absolute_time_t nextWater = nil_time;
-    t_binday landfill;
-    t_binday recycling;
+    t_binday currentLandfill;
+    t_binday currentRecycling;
 } t_globalData;
 
 #endif // SETTINGS_HPP

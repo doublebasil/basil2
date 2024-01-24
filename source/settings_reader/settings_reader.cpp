@@ -11,9 +11,9 @@
 #include <string.h>
 
 #define SD_CARD_READ_BUFFER_SIZE    ( 100 )
-#define CURRENT_SETTING_BUFFER_SIZE ( 50 )
+#define CURRENT_SETTING_BUFFER_SIZE ( 10000 )
 
-#define SD_CARD_WRITE_BUFFER_SIZE   ( 100 )
+// #define SD_CARD_WRITE_BUFFER_SIZE   ( 100 )
 
 typedef enum
 {
@@ -21,6 +21,10 @@ typedef enum
     e_wifiPassword,
     e_wateringTimes,
     e_wateringDuration,
+    e_landfillEntries,
+    e_landfillUnix,
+    e_recyclingEntries,
+    e_recyclingUnix,
     e_done,
     e_bufferOverfull,
     e_settingsReadError,
