@@ -44,8 +44,8 @@
 #define REBOOT_DELAY_MS                     ( 10ULL * 60ULL * 1000ULL ) // 10 minutes
 #define MAX_WIFI_CONNECTION_ATTEMPTS        ( 3U )
 #define WIFI_CONNECTION_RETRY_DELAY_MS      ( 30ULL * 1000ULL ) // 30 seconds
-#define MESSAGE_READ_DELAY_MS               ( 2000ULL )
-// #define MESSAGE_READ_DELAY_MS               ( 0ULL )
+// #define MESSAGE_READ_DELAY_MS               ( 500ULL )
+#define MESSAGE_READ_DELAY_MS               ( 0ULL )
 #define NTP_RESEND_DELAY_US                 ( 10LL * 1000LL * 1000LL )
 #define NTP_MAX_ATTEMPTS                    ( 5 )
 #define DNS_MAX_ATTEMPTS                    ( 5 )
@@ -66,10 +66,10 @@ typedef struct {
     int32_t wateringTimes[MAX_NUMBER_OF_WATERING_TIMES]; // Seconds since midnight, negative if unused, only used if RTC is set via NTP server
     uint16_t wateringDurationMs;
     // Bin days, unix time stamps for 9AM on binday
-    uint8_t landfillEntried; // Size of malloc
-    uint64_t* landfillTimes;
-    uint8_t recyclingEntried; // Size of malloc
-    uint64_t* recyclingTimes;
+    uint8_t landfillEntries; // Size of malloc
+    uint64_t* landfillUnix = NULL;
+    uint8_t recyclingEntries; // Size of malloc
+    uint64_t* recyclingUnix = NULL;
 } t_sdCardSettings;
 
 typedef struct {

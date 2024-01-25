@@ -127,6 +127,7 @@ int system_initialise( t_globalData* globalDataPtr )
     globalDataPtr->currentState = e_sysState_showInfo;
     globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
 
+
     return 0;
 }
 

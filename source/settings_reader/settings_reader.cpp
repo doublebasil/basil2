@@ -9,6 +9,7 @@
 
 #include "stdio.h"
 #include <string.h>
+#include <cstdlib>
 
 #define SD_CARD_READ_BUFFER_SIZE    ( 100 )
 #define CURRENT_SETTING_BUFFER_SIZE ( 10000 )
@@ -100,6 +101,14 @@ int settings_readFromSDCard( t_globalData* globalDataPtr )
                     else if( currentSetting == e_wateringTimes )
                         currentSetting = e_wateringDuration;
                     else if( currentSetting == e_wateringDuration )
+                        currentSetting = e_landfillEntries;
+                    else if( currentSetting == e_landfillEntries )
+                        currentSetting = e_landfillUnix;
+                    else if( currentSetting == e_landfillUnix )
+                        currentSetting = e_recyclingEntries;
+                    else if( currentSetting == e_recyclingEntries )
+                        currentSetting = e_recyclingUnix;
+                    else
                     {
                         currentSetting = e_done;
                         break;
@@ -359,8 +368,8 @@ int m_readSetting( t_globalData* globalDataPtr, t_sdCardReadCurrentSetting curre
             // Check the next (in reverse) 4 characters are numbers
             if( ( m_charIsNumber( settingsBuffer[bufferIndex] ) == false ) ||
                 ( m_charIsNumber( settingsBuffer[bufferIndex - 1] == false ) ) ||
-                ( m_charIsNumber( settingsBuffer[bufferIndex - 2] ==false ) ) ||
-                ( m_charIsNumber( settingsBuffer[bufferIndex - 3] ==false ) ) )
+                ( m_charIsNumber( settingsBuffer[bufferIndex - 2] == false ) ) ||
+                ( m_charIsNumber( settingsBuffer[bufferIndex - 3] == false ) ) )
             {
                 return 1; // A character was not a number
             }
@@ -421,7 +430,7 @@ int m_readSetting( t_globalData* globalDataPtr, t_sdCardReadCurrentSetting curre
     else if( currentSetting == e_wateringDuration )
     {
         // Find the end of the string
-        uint8_t bufferIndex = 0U;
+        uint16_t bufferIndex = 0U;
         while( settingsBuffer[bufferIndex] != 0 )
         {
             ++bufferIndex;
@@ -451,6 +460,182 @@ int m_readSetting( t_globalData* globalDataPtr, t_sdCardReadCurrentSetting curre
         }
 
         globalDataPtr->sdCardSettings.wateringDurationMs = runningCount;
+    }
+    else if( currentSetting == e_landfillEntries )
+    {
+        uint16_t bufferIndex = 0U;
+        // Find the end of the char array
+        while( settingsBuffer[bufferIndex] != 0 )
+            ++bufferIndex;
+        --bufferIndex;
+        
+        uint8_t powerOfTen = 1U;
+        uint8_t runningTotal = 0U;
+        while( true )
+        {
+            if( m_charIsNumber( settingsBuffer[bufferIndex] ) == false )
+                return 1;
+
+            runningTotal += powerOfTen * ( settingsBuffer[bufferIndex] - 48 );
+            powerOfTen *= 10;
+
+            if( bufferIndex == 0U )
+                break;
+            
+            --bufferIndex;
+        }
+        globalDataPtr->sdCardSettings.landfillEntries = runningTotal;
+        // Malloc!
+        globalDataPtr->sdCardSettings.landfillUnix = (uint64_t*) malloc( sizeof(uint64_t) * globalDataPtr->sdCardSettings.landfillEntries );
+        // Check for allocation success
+        if( globalDataPtr->sdCardSettings.landfillUnix == NULL )
+        {
+            printf( "landfillUnix allocation failed\n" );
+            return 1;
+        }
+    }
+    else if( currentSetting == e_landfillUnix )
+    {
+        int32_t bufferIndex = 0U;
+        // Move the bufferIndex to the end of the buffer
+        while( settingsBuffer[bufferIndex] != 0 )
+            ++bufferIndex;
+        --bufferIndex;
+        
+        uint64_t runningTotal = 0U;
+        uint64_t powerOfTen = 1U;
+        uint8_t landfillIndex = globalDataPtr->sdCardSettings.landfillEntries - 1;
+        uint8_t lastSet = 0xFFU;
+
+        while( bufferIndex >= 0 )
+        {
+            if( m_charIsNumber( settingsBuffer[bufferIndex] ) )
+            {
+                runningTotal += (uint64_t) ( settingsBuffer[bufferIndex] - 48 ) * powerOfTen;
+                powerOfTen *= 10U;
+                --bufferIndex;
+            }
+            else
+            {
+                // Reached the end of a number (hopefully)
+                globalDataPtr->sdCardSettings.landfillUnix[landfillIndex] = runningTotal;
+                lastSet = landfillIndex;
+                if( landfillIndex == 0 )
+                {   
+                    break;
+                }
+                
+                --landfillIndex;
+                runningTotal = 0U;
+                powerOfTen = 1U;
+                // Move the buffer index until we find the start of a number
+                --bufferIndex;
+                while( m_charIsNumber( settingsBuffer[bufferIndex] ) == false )
+                {
+                    --bufferIndex;
+                    if( bufferIndex < 0 )
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if( lastSet >= 2 )
+            return 1;
+        else if( lastSet == 1 )
+        {
+            globalDataPtr->sdCardSettings.landfillUnix[0] = runningTotal;
+        }
+    }
+    else if( currentSetting == e_recyclingEntries )
+    {
+        uint16_t bufferIndex = 0U;
+        // Find the end of the char array
+        while( settingsBuffer[bufferIndex] != 0 )
+            ++bufferIndex;
+        if( bufferIndex == 0 )
+            return 1;
+        --bufferIndex;
+        
+        uint8_t powerOfTen = 1U;
+        uint8_t runningTotal = 0U;
+        while( true )
+        {
+            if( m_charIsNumber( settingsBuffer[bufferIndex] ) == false )
+                return 1;
+
+            runningTotal += powerOfTen * ( settingsBuffer[bufferIndex] - 48 );
+            powerOfTen *= 10;
+
+            if( bufferIndex == 0U )
+                break;
+            
+            --bufferIndex;
+        }
+        globalDataPtr->sdCardSettings.recyclingEntries = runningTotal;
+        // Malloc!
+        globalDataPtr->sdCardSettings.recyclingUnix = (uint64_t*) malloc( sizeof(uint64_t) * globalDataPtr->sdCardSettings.recyclingEntries );
+        // Check for allocation success
+        if( globalDataPtr->sdCardSettings.recyclingUnix == NULL )
+        {
+            printf( "recyclingUnix allocation failed\n" );
+            return 1;
+        }
+    }
+    else if( currentSetting == e_recyclingUnix )
+    {
+        int32_t bufferIndex = 0U;
+        // Move the bufferIndex to the end of the buffer
+        while( settingsBuffer[bufferIndex] != 0 )
+            ++bufferIndex;
+        --bufferIndex;
+        
+        uint64_t runningTotal = 0U;
+        uint64_t powerOfTen = 1U;
+        uint8_t recyclingIndex = globalDataPtr->sdCardSettings.recyclingEntries - 1;
+        uint8_t lastSet = 0xFFU;
+
+        while( bufferIndex >= 0 )
+        {
+            if( m_charIsNumber( settingsBuffer[bufferIndex] ) )
+            {
+                runningTotal += (uint64_t) ( settingsBuffer[bufferIndex] - 48 ) * powerOfTen;
+                powerOfTen *= 10U;
+                --bufferIndex;
+            }
+            else
+            {
+                // Reached the end of a number (hopefully)
+                globalDataPtr->sdCardSettings.landfillUnix[recyclingIndex] = runningTotal;
+                lastSet = recyclingIndex;
+                if( recyclingIndex == 0 )
+                {   
+                    break;
+                }
+                
+                --recyclingIndex;
+                runningTotal = 0U;
+                powerOfTen = 1U;
+                // Move the buffer index until we find the start of a number
+                --bufferIndex;
+                while( m_charIsNumber( settingsBuffer[bufferIndex] ) == false )
+                {
+                    --bufferIndex;
+                    if( bufferIndex < 0 )
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if( lastSet >= 2 )
+            return 1;
+        else if( lastSet == 1 )
+        {
+            globalDataPtr->sdCardSettings.recyclingUnix[0] = runningTotal;
+        }
     }
 
     return 0;
