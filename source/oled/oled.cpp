@@ -1422,7 +1422,6 @@ static inline void m_terminalWriteChar( char character, uint8_t textOriginX, uin
  */
 static inline void m_terminalWrite( const char text[] )
 {
-    printf("m_terminalCurrentLine = %d, m_terminalHeightInLines=%d\n", m_terminalCurrentLine, m_terminalHeightInLines);
     if( m_terminalBitmapState == e_terminalUninitialised )
         return; // Terminal not ininitialised
 
