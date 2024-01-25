@@ -500,13 +500,20 @@ int m_readSetting( t_globalData* globalDataPtr, t_sdCardReadCurrentSetting curre
         // Move the bufferIndex to the end of the buffer
         while( settingsBuffer[bufferIndex] != 0 )
             ++bufferIndex;
-        --bufferIndex;
+        // Now move the buffer backwards until a number is found
+        while( m_charIsNumber( settingsBuffer[bufferIndex] ) == false )
+        {
+            --bufferIndex;
+            if( bufferIndex < 0 )
+            {
+                break;
+            }
+        }
         
         uint64_t runningTotal = 0U;
         uint64_t powerOfTen = 1U;
-        uint8_t landfillIndex = globalDataPtr->sdCardSettings.landfillEntries - 1;
-        uint8_t lastSet = 0xFFU;
-
+        int16_t landfillIndex = globalDataPtr->sdCardSettings.landfillEntries - 1;
+        
         while( bufferIndex >= 0 )
         {
             if( m_charIsNumber( settingsBuffer[bufferIndex] ) )
@@ -517,19 +524,13 @@ int m_readSetting( t_globalData* globalDataPtr, t_sdCardReadCurrentSetting curre
             }
             else
             {
-                // Reached the end of a number (hopefully)
+                // Reached the end a number
                 globalDataPtr->sdCardSettings.landfillUnix[landfillIndex] = runningTotal;
-                lastSet = landfillIndex;
                 if( landfillIndex == 0 )
-                {   
                     break;
-                }
-                
                 --landfillIndex;
                 runningTotal = 0U;
                 powerOfTen = 1U;
-                // Move the buffer index until we find the start of a number
-                --bufferIndex;
                 while( m_charIsNumber( settingsBuffer[bufferIndex] ) == false )
                 {
                     --bufferIndex;
@@ -540,13 +541,9 @@ int m_readSetting( t_globalData* globalDataPtr, t_sdCardReadCurrentSetting curre
                 }
             }
         }
-
-        if( lastSet >= 2 )
+        globalDataPtr->sdCardSettings.landfillUnix[landfillIndex] = runningTotal;
+        if( landfillIndex != 0 )
             return 1;
-        else if( lastSet == 1 )
-        {
-            globalDataPtr->sdCardSettings.landfillUnix[0] = runningTotal;
-        }
     }
     else if( currentSetting == e_recyclingEntries )
     {
@@ -589,13 +586,20 @@ int m_readSetting( t_globalData* globalDataPtr, t_sdCardReadCurrentSetting curre
         // Move the bufferIndex to the end of the buffer
         while( settingsBuffer[bufferIndex] != 0 )
             ++bufferIndex;
-        --bufferIndex;
+        // Now move the buffer backwards until a number is found
+        while( m_charIsNumber( settingsBuffer[bufferIndex] ) == false )
+        {
+            --bufferIndex;
+            if( bufferIndex < 0 )
+            {
+                break;
+            }
+        }
         
         uint64_t runningTotal = 0U;
         uint64_t powerOfTen = 1U;
-        uint8_t recyclingIndex = globalDataPtr->sdCardSettings.recyclingEntries - 1;
-        uint8_t lastSet = 0xFFU;
-
+        int16_t recyclingIndex = globalDataPtr->sdCardSettings.recyclingEntries - 1;
+        
         while( bufferIndex >= 0 )
         {
             if( m_charIsNumber( settingsBuffer[bufferIndex] ) )
@@ -606,19 +610,13 @@ int m_readSetting( t_globalData* globalDataPtr, t_sdCardReadCurrentSetting curre
             }
             else
             {
-                // Reached the end of a number (hopefully)
-                globalDataPtr->sdCardSettings.landfillUnix[recyclingIndex] = runningTotal;
-                lastSet = recyclingIndex;
+                // Reached the end a number
+                globalDataPtr->sdCardSettings.recyclingUnix[recyclingIndex] = runningTotal;
                 if( recyclingIndex == 0 )
-                {   
                     break;
-                }
-                
                 --recyclingIndex;
                 runningTotal = 0U;
                 powerOfTen = 1U;
-                // Move the buffer index until we find the start of a number
-                --bufferIndex;
                 while( m_charIsNumber( settingsBuffer[bufferIndex] ) == false )
                 {
                     --bufferIndex;
@@ -629,13 +627,9 @@ int m_readSetting( t_globalData* globalDataPtr, t_sdCardReadCurrentSetting curre
                 }
             }
         }
-
-        if( lastSet >= 2 )
+        globalDataPtr->sdCardSettings.recyclingUnix[recyclingIndex] = runningTotal;
+        if( recyclingIndex != 0 )
             return 1;
-        else if( lastSet == 1 )
-        {
-            globalDataPtr->sdCardSettings.recyclingUnix[0] = runningTotal;
-        }
     }
 
     return 0;

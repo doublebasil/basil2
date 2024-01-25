@@ -127,7 +127,16 @@ int system_initialise( t_globalData* globalDataPtr )
     globalDataPtr->currentState = e_sysState_showInfo;
     globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
 
-    
+    printf("landfill\n");
+    for( uint8_t index = 0U; index < globalDataPtr->sdCardSettings.landfillEntries; index++ )
+    {
+        printf( "%d - %lld\n", index, globalDataPtr->sdCardSettings.landfillUnix[index] );
+    }
+    printf("recycling\n");
+    for( uint8_t index = 0U; index < globalDataPtr->sdCardSettings.recyclingEntries; index++ )
+    {
+        printf( "%d - %lld\n", index, globalDataPtr->sdCardSettings.recyclingUnix[index] );
+    }
 
     return 0;
 }
