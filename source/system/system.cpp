@@ -323,15 +323,34 @@ static void m_infoSetup( t_globalData* globalDataPtr )
         oled_clear();
     }
 
+    // Create a terminal 
     oled_terminalInit( 12, TERMINAL_INFO_COLOUR );
-    oled_terminalWrite( "INFO" );
 
+    rtc_get_datetime( &m_datetime );
+    m_dayOfTheWeek( &m_text2[0], sizeof( m_text2 ), m_datetime.dotw );
+    snprintf( m_text1, sizeof( m_text1 ), "%s %02d/%02d/%02d",
+        m_text2, m_datetime.day, m_datetime.month, ( m_datetime.year % 100 ) );
+    oled_terminalSetLine( 0 );
+    oled_terminalWrite( m_text1 );
+
+    snprintf( m_text1, sizeof( m_text1 ), "%02d:%02d:%02d",
+        m_datetime.hour, m_datetime.min, m_datetime.sec );
+    oled_terminalSetLine( 1 );
+    oled_terminalWrite( m_text1 );
+
+    snprintf( m_text1, sizeof( m_text1 ), "%lld", m_datetimeToEpoch( &m_datetime ) );
+    oled_terminalSetLine( 2 );
+    oled_terminalWrite( m_text1 );
+
+    // The bindays aren't updated in the infoUpdate function
     oled_terminalSetLine( 4 );
     oled_terminalWrite( "Next bin days:" );
     snprintf( m_text1, sizeof( m_text1 ), "Recycling %02d/%02d/%02d", globalDataPtr->currentRecycling.day, globalDataPtr->currentRecycling.month, globalDataPtr->currentRecycling.year );
     oled_terminalWrite( m_text1 );
     snprintf( m_text1, sizeof( m_text1 ), "Landfill  %02d/%02d/%02d", globalDataPtr->currentLandfill.day, globalDataPtr->currentLandfill.month, globalDataPtr->currentLandfill.year );
     oled_terminalWrite( m_text1 );
+
+
 
     globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
 }
@@ -524,7 +543,55 @@ static void m_epochToDatetime( uint64_t epoch, datetime_t* datetimePtr )
 
 static bool m_checkRecyclingBinday( t_globalData* globalDataPtr )
 {
-    return false; // TODO
+    // Ensure m_datetime is up to date
+    rtc_get_datetime( &m_datetime );
+    // Convert m_datetime into an epoch
+    uint64_t epoch = (uint64_t) m_datetimeToEpoch( &m_datetime );
+
+    // Check if we need to calculate bin day. unixEpoch has default value 0 so this works first time round too
+    if( epoch > globalDataPtr->currentRecycling.unixEpoch )
+    {
+        bool set = false;
+
+        for( uint16_t index = 0U; index < globalDataPtr->sdCardSettings.recyclingEntries; index ++ )
+        {
+            if( epoch < globalDataPtr->sdCardSettings.recyclingUnix[index] )
+            {
+                globalDataPtr->currentRecycling.unixEpoch = globalDataPtr->sdCardSettings.recyclingUnix[index];
+                set = true;
+                break;
+            }
+        }
+
+        if( set == false )
+        {
+            printf( "Ran out of bin day dates!\n" );
+            globalDataPtr->currentRecycling.unixEpoch = 0;
+            globalDataPtr->currentRecycling.day = 0;
+            globalDataPtr->currentRecycling.month = 0;
+            globalDataPtr->currentRecycling.year = 0;
+            return false;
+        }
+        else // if set == true
+        {
+            // Calculate the day, month and year for this epoch
+            datetime_t datetime;
+            m_epochToDatetime( globalDataPtr->currentRecycling.unixEpoch, &datetime );
+            globalDataPtr->currentRecycling.day = datetime.day;
+            globalDataPtr->currentRecycling.month = datetime.month;
+            globalDataPtr->currentRecycling.year = datetime.year;
+        }
+    }
+
+    // Check if bin day is soon
+    if( epoch > ( globalDataPtr->currentRecycling.unixEpoch - ( BINDAY_WARNING_TIME_HOURS * 60ULL * 60ULL ) ) )
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 static bool m_checkLandfillBinday( t_globalData* globalDataPtr )
