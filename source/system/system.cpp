@@ -33,6 +33,7 @@ static void m_infoUpdate( t_globalData* globalDataPtr );
 static void m_checkInput( t_globalData* globalDataPtr );
 static void m_dayOfTheWeek( char* strPrt, uint8_t strLen, uint8_t dayOfTheWeek );
 static time_t m_datetimeToEpoch( datetime_t* datetimePtr );
+static void m_epochToDatetime( uint64_t epoch, datetime_t* datetimePtr );
 static bool m_checkRecyclingBinday( t_globalData* globalDataPtr );
 static bool m_checkLandfillBinday( t_globalData* globalDataPtr );
 
@@ -128,16 +129,10 @@ int system_initialise( t_globalData* globalDataPtr )
     globalDataPtr->currentState = e_sysState_showInfo;
     globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
 
-    printf("landfill\n");
-    for( uint8_t index = 0U; index < globalDataPtr->sdCardSettings.landfillEntries; index++ )
-    {
-        printf( "%d - %lld\n", index, globalDataPtr->sdCardSettings.landfillUnix[index] );
-    }
-    printf("recycling\n");
-    for( uint8_t index = 0U; index < globalDataPtr->sdCardSettings.recyclingEntries; index++ )
-    {
-        printf( "%d - %lld\n", index, globalDataPtr->sdCardSettings.recyclingUnix[index] );
-    }
+    // for( uint16_t i = 0U; i < globalDataPtr->sdCardSettings.landfillEntries; i++ )
+    // {
+    //     printf("[%d] = %lld\n", i, globalDataPtr->sdCardSettings.landfillUnix[i] );
+    // }
 
     return 0;
 }
@@ -331,6 +326,13 @@ static void m_infoSetup( t_globalData* globalDataPtr )
     oled_terminalInit( 12, TERMINAL_INFO_COLOUR );
     oled_terminalWrite( "INFO" );
 
+    oled_terminalSetLine( 4 );
+    oled_terminalWrite( "Next bin days:" );
+    snprintf( m_text1, sizeof( m_text1 ), "Recycling %02d/%02d/%02d", globalDataPtr->currentRecycling.day, globalDataPtr->currentRecycling.month, globalDataPtr->currentRecycling.year );
+    oled_terminalWrite( m_text1 );
+    snprintf( m_text1, sizeof( m_text1 ), "Landfill  %02d/%02d/%02d", globalDataPtr->currentLandfill.day, globalDataPtr->currentLandfill.month, globalDataPtr->currentLandfill.year );
+    oled_terminalWrite( m_text1 );
+
     globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
 }
 
@@ -365,16 +367,16 @@ static void m_infoUpdate( t_globalData* globalDataPtr )
     m_dayOfTheWeek( &m_text2[0], sizeof( m_text2 ), m_datetime.dotw );
     snprintf( m_text1, sizeof( m_text1 ), "%s %02d/%02d/%02d",
         m_text2, m_datetime.day, m_datetime.month, ( m_datetime.year % 100 ) );
-    oled_terminalSetLine( 2 );
+    oled_terminalSetLine( 0 );
     oled_terminalWrite( m_text1 );
 
     snprintf( m_text1, sizeof( m_text1 ), "%02d:%02d:%02d",
         m_datetime.hour, m_datetime.min, m_datetime.sec );
-    oled_terminalSetLine( 3 );
+    oled_terminalSetLine( 1 );
     oled_terminalWrite( m_text1 );
 
     snprintf( m_text1, sizeof( m_text1 ), "%lld", m_datetimeToEpoch( &m_datetime ) );
-    oled_terminalSetLine( 5 );
+    oled_terminalSetLine( 2 );
     oled_terminalWrite( m_text1 );
 }
 
@@ -506,6 +508,20 @@ static time_t m_datetimeToEpoch( datetime_t* datetimePtr )
     return mktime( &timeinfo );
 }
 
+static void m_epochToDatetime( uint64_t epoch, datetime_t* datetimePtr )
+{
+    time_t timetEpoch = (time_t) epoch;
+    struct tm *utc = gmtime( &timetEpoch );
+
+    datetimePtr->year = utc->tm_year + 1900;
+    datetimePtr->month= utc->tm_mon + 1;
+    datetimePtr->day = utc->tm_mday;
+    datetimePtr->hour = utc->tm_hour;
+    datetimePtr->min = utc->tm_min;
+    datetimePtr->sec = utc->tm_sec;
+    datetimePtr->dotw = utc->tm_wday;
+}
+
 static bool m_checkRecyclingBinday( t_globalData* globalDataPtr )
 {
     return false; // TODO
@@ -513,6 +529,54 @@ static bool m_checkRecyclingBinday( t_globalData* globalDataPtr )
 
 static bool m_checkLandfillBinday( t_globalData* globalDataPtr )
 {
-    return false; // TODO
+    // Ensure m_datetime is up to date
+    rtc_get_datetime( &m_datetime );
+    // Convert m_datetime into an epoch
+    uint64_t epoch = (uint64_t) m_datetimeToEpoch( &m_datetime );
+
+    // Check if we need to calculate bin day. unixEpoch has default value 0 so this works first time round too
+    if( epoch > globalDataPtr->currentLandfill.unixEpoch )
+    {
+        bool set = false;
+
+        for( uint16_t index = 0U; index < globalDataPtr->sdCardSettings.landfillEntries; index ++ )
+        {
+            if( epoch < globalDataPtr->sdCardSettings.landfillUnix[index] )
+            {
+                globalDataPtr->currentLandfill.unixEpoch = globalDataPtr->sdCardSettings.landfillUnix[index];
+                set = true;
+                break;
+            }
+        }
+
+        if( set == false )
+        {
+            printf( "Ran out of bin day dates!\n" );
+            globalDataPtr->currentLandfill.unixEpoch = 0;
+            globalDataPtr->currentLandfill.day = 0;
+            globalDataPtr->currentLandfill.month = 0;
+            globalDataPtr->currentLandfill.year = 0;
+            return false;
+        }
+        else // if set == true
+        {
+            // Calculate the day, month and year for this epoch
+            datetime_t datetime;
+            m_epochToDatetime( globalDataPtr->currentLandfill.unixEpoch, &datetime );
+            globalDataPtr->currentLandfill.day = datetime.day;
+            globalDataPtr->currentLandfill.month = datetime.month;
+            globalDataPtr->currentLandfill.year = datetime.year;
+        }
+    }
+
+    // Check if bin day is soon
+    if( epoch > ( globalDataPtr->currentLandfill.unixEpoch - ( BINDAY_WARNING_TIME_HOURS * 60ULL * 60ULL ) ) )
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 

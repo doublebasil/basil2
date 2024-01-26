@@ -52,6 +52,7 @@
 #define DNS_MAX_ATTEMPTS                    ( 5 )
 #define STATE_TIMEOUT_DELAY_MS              ( 15000ULL )
 #define IMAGE_DISPLAY_TIME_MS               ( 5000ULL )
+#define BINDAY_WARNING_TIME_HOURS           ( 9ULL + 12ULL ) // Number of hours before 9am on bin day that the warning should be triggered
 
 /* --- TYPEDEFS --- */
 typedef enum {
@@ -103,10 +104,10 @@ typedef enum {
 } t_sysState; // Return of the dreaded state machine
 
 typedef struct {
-    uint8_t day; // 1 - 31
-    uint8_t month; // 1 - 12
-    uint8_t year;
-    time_t unixEpoch = 0;
+    uint8_t day = 0; // 1 - 31
+    uint8_t month = 0; // 1 - 12
+    uint8_t year = 0;
+    uint64_t unixEpoch = 0;
 } t_binday;
 
 /* GLOBAL DATA STRUCT */
