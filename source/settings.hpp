@@ -44,6 +44,7 @@
 #define REBOOT_DELAY_MS                     ( 10ULL * 60ULL * 1000ULL ) // 10 minutes
 #define MAX_WIFI_CONNECTION_ATTEMPTS        ( 3U )
 #define WIFI_CONNECTION_RETRY_DELAY_MS      ( 30ULL * 1000ULL ) // 30 seconds
+#define LONG_PRESS_TIME_MS                  ( 2000LL )
 // #define MESSAGE_READ_DELAY_MS               ( 500ULL )
 #define MESSAGE_READ_DELAY_MS               ( 0ULL )
 #define NTP_RESEND_DELAY_US                 ( 10LL * 1000LL * 1000LL )
@@ -58,6 +59,12 @@ typedef enum {
     e_tankState_ok,
     e_tankState_dry,
 } t_tankState;
+
+typedef enum {
+    e_input_none,
+    e_input_press,
+    e_input_long,
+} t_input;
 
 /* SUB STRUCTS */
 typedef struct {
@@ -108,6 +115,9 @@ typedef struct {
     t_sdCardSettings sdCardSettings;
     t_hardwareData hardwareData;
     t_wifiData wifiData;
+    /* BUTTONS */
+    t_input infoButton = e_input_none;
+    t_input waterButton = e_input_none;
     /* STATE MODEL */
     t_tankState tankState = e_tankState_unknown;
     t_sysState currentState = e_sysState_notSet;

@@ -30,6 +30,7 @@ static void m_idleSetup( t_globalData* globalDataPtr );
 static void m_infoSetup( t_globalData* globalDataPtr );
 static void m_infoUpdate( t_globalData* globalDataPtr );
 /* OTHER */
+static void m_checkInput( t_globalData* globalDataPtr );
 static void m_dayOfTheWeek( char* strPrt, uint8_t strLen, uint8_t dayOfTheWeek );
 static time_t m_datetimeToEpoch( datetime_t* datetimePtr );
 static bool m_checkRecyclingBinday( t_globalData* globalDataPtr );
@@ -150,12 +151,13 @@ void system_reboot( void )
 
 void system_update( t_globalData* globalDataPtr )
 {
-    bool infoButtonState = gpio_get( INFO_BUTTON_PIN );
-    bool waterButtonState = gpio_get( WATER_BUTTON_PIN );
+    m_checkInput( globalDataPtr );
 
-    if( waterButtonState )
+    if( globalDataPtr->waterButton == e_input_long )
+    {
         globalDataPtr->currentState = e_sysState_watering;
-    else if( infoButtonState )
+    }
+    else if( globalDataPtr->infoButton == e_input_press )
     {
         globalDataPtr->currentState = e_sysState_showInfo;
     }
@@ -343,10 +345,20 @@ static void m_infoUpdate( t_globalData* globalDataPtr )
         return;
     }
     // Check for button presses
-    if( gpio_get( INFO_BUTTON_PIN ) )
+    if( globalDataPtr->waterButton == e_input_long )
+    {
+        // Change to watering
+        globalDataPtr->currentState = e_sysState_watering;
+        return;
+    }
+    else if( globalDataPtr->infoButton == e_input_press )
     {
         // Extend the timeout
         globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
+    }
+    else if( globalDataPtr->infoButton == e_input_long )
+    {
+        // TODO show propaganda
     }
 
     rtc_get_datetime( &m_datetime );
@@ -367,6 +379,73 @@ static void m_infoUpdate( t_globalData* globalDataPtr )
 }
 
 /* OTHER */
+static void m_checkInput( t_globalData* globalDataPtr )
+{
+    // Input button
+    static absolute_time_t infoButtonHoldStart = nil_time;
+    static bool infoButtonPreviousState = false;
+    // Water button
+    static absolute_time_t waterButtonHoldStart = nil_time;
+    static bool waterButtonPreviousState = false;
+
+    if( gpio_get( INFO_BUTTON_PIN ) )
+    {
+        if( infoButtonPreviousState == true )
+        {
+            // Check for long press
+            if( ( is_nil_time( infoButtonHoldStart ) == false )
+                && ( absolute_time_diff_us( infoButtonHoldStart, get_absolute_time() ) > ( LONG_PRESS_TIME_MS * 1000LL ) ) )
+            {
+                globalDataPtr->infoButton = e_input_long;
+            }
+            else
+            {
+                globalDataPtr->infoButton = e_input_none;
+            }
+        }
+        else
+        {
+            // Short press
+            infoButtonPreviousState = true;
+            globalDataPtr->infoButton = e_input_press;
+        }
+    }
+    else
+    {
+        infoButtonPreviousState = false;
+        globalDataPtr->infoButton = e_input_none;
+    }
+
+    if( gpio_get( WATER_BUTTON_PIN ) )
+    {
+        if( waterButtonPreviousState == true )
+        {
+            // Check for long press
+            if( ( is_nil_time( waterButtonHoldStart ) == false )
+                && ( absolute_time_diff_us( waterButtonHoldStart, get_absolute_time() ) > ( LONG_PRESS_TIME_MS * 1000LL ) ) )
+            {
+                globalDataPtr->waterButton = e_input_long;
+            }
+            else
+            {
+                globalDataPtr->waterButton = e_input_none;
+            }
+        }
+        else
+        {
+            // Short press
+            waterButtonPreviousState = true;
+            globalDataPtr->waterButton = e_input_press;
+        }
+    }
+    else
+    {
+        waterButtonPreviousState = false;
+        globalDataPtr->waterButton = e_input_none;
+    }
+
+}
+
 static void m_dayOfTheWeek( char* strPrt, uint8_t strLen, uint8_t dayOfTheWeek )
 {
     switch( dayOfTheWeek )
