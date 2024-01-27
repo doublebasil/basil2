@@ -36,6 +36,7 @@ static time_t m_datetimeToEpoch( datetime_t* datetimePtr );
 static void m_epochToDatetime( uint64_t epoch, datetime_t* datetimePtr );
 static bool m_checkRecyclingBinday( t_globalData* globalDataPtr );
 static bool m_checkLandfillBinday( t_globalData* globalDataPtr );
+static void m_calculateNextWateringTime( t_globalData* globalDataPtr );
 
 /* PUBLIC METHOD IMPLEMENTATION */
 int system_initialise( t_globalData* globalDataPtr )
@@ -129,10 +130,7 @@ int system_initialise( t_globalData* globalDataPtr )
     globalDataPtr->currentState = e_sysState_showInfo;
     globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
 
-    // for( uint16_t i = 0U; i < globalDataPtr->sdCardSettings.landfillEntries; i++ )
-    // {
-    //     printf("[%d] = %lld\n", i, globalDataPtr->sdCardSettings.landfillUnix[i] );
-    // }
+    m_calculateNextWateringTime( globalDataPtr );
 
     return 0;
 }
@@ -338,19 +336,65 @@ static void m_infoSetup( t_globalData* globalDataPtr )
     oled_terminalSetLine( 1 );
     oled_terminalWrite( m_text1 );
 
-    snprintf( m_text1, sizeof( m_text1 ), "%lld", m_datetimeToEpoch( &m_datetime ) );
-    oled_terminalSetLine( 2 );
-    oled_terminalWrite( m_text1 );
+    // snprintf( m_text1, sizeof( m_text1 ), "%lld", m_datetimeToEpoch( &m_datetime ) );
+    // oled_terminalSetLine( 2 );
+    // oled_terminalWrite( m_text1 );
 
     // The bindays aren't updated in the infoUpdate function
-    oled_terminalSetLine( 4 );
+    oled_terminalSetLine( 3 );
     oled_terminalWrite( "Next bin days:" );
     snprintf( m_text1, sizeof( m_text1 ), "Recycling %02d/%02d/%02d", globalDataPtr->currentRecycling.day, globalDataPtr->currentRecycling.month, globalDataPtr->currentRecycling.year );
     oled_terminalWrite( m_text1 );
     snprintf( m_text1, sizeof( m_text1 ), "Landfill  %02d/%02d/%02d", globalDataPtr->currentLandfill.day, globalDataPtr->currentLandfill.month, globalDataPtr->currentLandfill.year );
     oled_terminalWrite( m_text1 );
 
+    oled_terminalSetLine( 7 );
+    oled_terminalWrite( "Next watering in:" );
+    oled_terminalSetLine( 8 );
+    int64_t msToWatering = absolute_time_diff_us( get_absolute_time(), globalDataPtr->nextWater ) / 1000LL;
+    if( msToWatering < 0 )
+    {
+        int64_t tempMsToWatering = msToWatering * -1;
+        int64_t seconds = tempMsToWatering / 1000;
+        int8_t hours = seconds / 3600;
+        int8_t minutes = (seconds % 3600) / 60;
+        int8_t remainingSeconds = seconds % 60;
+        // int16_t remainingMilliseconds = tempMsToWatering % 1000;
+        // snprintf( m_text1, sizeof( m_text1 ), "-%02u:%02u:%02u.%03u", hours, minutes, remainingSeconds, remainingMilliseconds );
+        snprintf( m_text1, sizeof( m_text1 ), "-%02u:%02u:%02u", hours, minutes, remainingSeconds );
+    }
+    else
+    {
+        int64_t seconds = msToWatering / 1000;
+        int8_t hours = seconds / 3600;
+        int8_t minutes = (seconds % 3600) / 60;
+        int8_t remainingSeconds = seconds % 60;
+        // int16_t remainingMilliseconds = msToWatering % 1000;
+        // snprintf( m_text1, sizeof( m_text1 ), "%02u:%02u:%02u.%03u", hours, minutes, remainingSeconds, remainingMilliseconds );
+        snprintf( m_text1, sizeof( m_text1 ), "%02u:%02u:%02u", hours, minutes, remainingSeconds );
+    }
+    oled_terminalWrite( m_text1 );
 
+    oled_terminalSetLine( oled_terminalGetHeightInCharacters() );
+    switch( globalDataPtr->tankState )
+    {
+        case e_tankState_ok:
+        {
+            oled_terminalWriteNoScroll( "Tank is ok" );
+        }
+        break;
+        case e_tankState_dry:
+        {
+            oled_terminalWriteNoScroll( "WARNING DRY TANK" );
+        }
+        break;
+        case e_tankState_unknown:
+        default:
+        {
+            oled_terminalWriteNoScroll( "Tank state unknown" );
+        }
+        break;
+    }
 
     globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
 }
@@ -394,9 +438,35 @@ static void m_infoUpdate( t_globalData* globalDataPtr )
     oled_terminalSetLine( 1 );
     oled_terminalWrite( m_text1 );
 
-    snprintf( m_text1, sizeof( m_text1 ), "%lld", m_datetimeToEpoch( &m_datetime ) );
-    oled_terminalSetLine( 2 );
+    // snprintf( m_text1, sizeof( m_text1 ), "%lld", m_datetimeToEpoch( &m_datetime ) );
+    // oled_terminalSetLine( 2 );
+    // oled_terminalWrite( m_text1 );
+
+    oled_terminalSetLine( 8 );
+    int64_t msToWatering = absolute_time_diff_us( get_absolute_time(), globalDataPtr->nextWater ) / 1000LL;
+    if( msToWatering < 0 )
+    {
+        int64_t tempMsToWatering = msToWatering * -1;
+        int64_t seconds = tempMsToWatering / 1000;
+        int8_t hours = seconds / 3600;
+        int8_t minutes = (seconds % 3600) / 60;
+        int8_t remainingSeconds = seconds % 60;
+        // int16_t remainingMilliseconds = tempMsToWatering % 1000;
+        // snprintf( m_text1, sizeof( m_text1 ), "-%02u:%02u:%02u.%03u", hours, minutes, remainingSeconds, remainingMilliseconds );
+        snprintf( m_text1, sizeof( m_text1 ), "-%02u:%02u:%02u", hours, minutes, remainingSeconds );
+    }
+    else
+    {
+        int64_t seconds = msToWatering / 1000;
+        int8_t hours = seconds / 3600;
+        int8_t minutes = (seconds % 3600) / 60;
+        int8_t remainingSeconds = seconds % 60;
+        // int16_t remainingMilliseconds = msToWatering % 1000;
+        // snprintf( m_text1, sizeof( m_text1 ), "%02u:%02u:%02u.%03u", hours, minutes, remainingSeconds, remainingMilliseconds );
+        snprintf( m_text1, sizeof( m_text1 ), "%02u:%02u:%02u", hours, minutes, remainingSeconds );
+    }
     oled_terminalWrite( m_text1 );
+
 }
 
 /* OTHER */
@@ -646,4 +716,30 @@ static bool m_checkLandfillBinday( t_globalData* globalDataPtr )
         return false;
     }
 }
+
+static void m_calculateNextWateringTime( t_globalData* globalDataPtr )
+{
+    // Get the current time
+    rtc_get_datetime( &m_datetime );
+    // Calculate the number of seconds since midnight
+    int64_t secondsSinceMidnight = m_datetime.sec + ( (int64_t) m_datetime.min * 60LL ) + ( (int64_t) m_datetime.hour * 60LL * 60LL );
+    // Calculate the next watering time
+    bool set = false;
+    for( uint8_t wateringIndex = 0U; wateringIndex < MAX_NUMBER_OF_WATERING_TIMES; wateringIndex++ )
+    {
+        if( secondsSinceMidnight < globalDataPtr->sdCardSettings.wateringTimes[wateringIndex] )
+        {
+            globalDataPtr->nextWater = make_timeout_time_ms( ( (int64_t) globalDataPtr->sdCardSettings.wateringTimes[wateringIndex] - secondsSinceMidnight ) * 1000LL );
+            set = true;
+            break;
+        }
+    }
+    // If set == false, then set to the first watering time tomorrow
+    if( set == false )
+    {
+        int64_t secondsToMidnight = SECONDS_PER_DAY - secondsSinceMidnight;
+        globalDataPtr->nextWater = make_timeout_time_ms( ( (int64_t) globalDataPtr->sdCardSettings.wateringTimes[0] + secondsToMidnight ) * 1000LL );
+    }
+}
+
 

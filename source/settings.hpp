@@ -29,6 +29,7 @@
 #define WIFI_SSID_MAX_LEN                   ( 32 )
 #define WIFI_PASSWORD_MAX_LEN               ( 32 )
 #define MAX_NUMBER_OF_WATERING_TIMES        ( 5 )
+#define SECONDS_PER_DAY                     ( 24LL * 60LL * 60LL )
 
 /* --- RGB565 COLOURS --- */
 #define RGB565_FOREST_GREEN                 ( 0x2444 )
@@ -125,7 +126,7 @@ typedef struct {
     t_sysState previousState = e_sysState_notSet;
     /* TIMESTAMPS */
     absolute_time_t stateTimeout = nil_time;
-    // absolute_time_t nextWater = nil_time;
+    absolute_time_t nextWater = nil_time;
     t_binday currentLandfill;
     t_binday currentRecycling;
 } t_globalData;
