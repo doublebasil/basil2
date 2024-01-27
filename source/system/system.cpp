@@ -40,6 +40,7 @@ static void m_epochToDatetime( uint64_t epoch, datetime_t* datetimePtr );
 static bool m_checkRecyclingBinday( t_globalData* globalDataPtr );
 static bool m_checkLandfillBinday( t_globalData* globalDataPtr );
 static void m_calculateNextWateringTime( t_globalData* globalDataPtr );
+static void m_propaganda( void );
 
 /* PUBLIC METHOD IMPLEMENTATION */
 int system_initialise( t_globalData* globalDataPtr )
@@ -456,7 +457,7 @@ static void m_infoUpdate( t_globalData* globalDataPtr )
     }
     else if( globalDataPtr->infoButton == e_input_long )
     {
-        // TODO show propaganda
+        m_propaganda();
     }
 
     rtc_get_datetime( &m_datetime );
@@ -817,4 +818,43 @@ static void m_calculateNextWateringTime( t_globalData* globalDataPtr )
     }
 }
 
-
+static void m_propaganda( void )
+{
+    switch( to_ms_since_boot( get_absolute_time() ) % 6 )
+    {
+        case 0:
+        {
+            oled_sdWriteImage( "p1.txt", 0, 0 );
+        }
+        break;
+        case 1:
+        {
+            oled_sdWriteImage( "p2.txt", 0, 0 );
+        }
+        break;
+        case 2:
+        {
+            oled_sdWriteImage( "p3.txt", 0, 0 );
+        }
+        break;
+        case 3:
+        {
+            oled_sdWriteImage( "p4.txt", 0, 0 );
+        }
+        break;
+        case 4:
+        {
+            oled_sdWriteImage( "p5.txt", 0, 0 );
+        }
+        break;
+        case 5:
+        {
+            oled_sdWriteImage( "p6.txt", 0, 0 );
+        }
+        break;
+    }
+    sleep_ms( IMAGE_DISPLAY_TIME_MS );
+    oled_clear();
+    oled_terminalSetNewColour( 0x0000 );
+    oled_terminalSetNewColour( TERMINAL_INFO_COLOUR );
+}

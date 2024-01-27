@@ -15,6 +15,12 @@ Use the OPTIONS constant to change what gets converted
 OPTIONS = [
     ["bluebin128.png", 128, 128, "bluebin128.txt"],
     ["greenbin128.png", 128, 128, "greenbin128.txt"],
+    ["cow128.png", 128, 128, "p1.txt"],
+    ["garlic128.png", 128, 128, "p2.txt"],
+    ["lam128.png", 128, 128, "p3.txt"],
+    ["pud128.png", 128, 128, "p4.txt"],
+    ["rhino128.png", 128, 128, "p5.txt"],
+    ["tayto128.png", 128, 128, "p6.txt"],
 ]
 
 from PIL import Image
