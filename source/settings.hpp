@@ -34,15 +34,18 @@
 /* --- RGB565 COLOURS --- */
 #define RGB565_FOREST_GREEN                 ( 0x2444 )
 #define RGB565_PURE_BLUE                    ( 0b0000000000011111 )
+#define RGB565_PURE_RED                     ( 0b1111100000000000 )
 
 /* --- TERMINAL --- */
 #define TERMINAL_FONT_12                    ( 12 )
 #define TERMINAL_INIT_COLOUR                ( RGB565_FOREST_GREEN )
 #define TERMINAL_INFO_COLOUR                ( RGB565_PURE_BLUE )
+#define WATER_EMERGENCY_STOP_COLOUR         ( RGB565_PURE_RED )
 
 /* --- TIMING AND BEHAVIOURS --- */
 #define MAIN_LOOP_TIME_PERIOD_MS            ( 50LL )
-#define REBOOT_DELAY_MS                     ( 10ULL * 60ULL * 1000ULL ) // 10 minutes
+// #define REBOOT_DELAY_MS                     ( 10ULL * 60ULL * 1000ULL ) // 10 minutes
+#define REBOOT_DELAY_MS                     ( 30ULL * 1000ULL ) // 30 seconds
 #define MAX_WIFI_CONNECTION_ATTEMPTS        ( 3U )
 #define WIFI_CONNECTION_RETRY_DELAY_MS      ( 30ULL * 1000ULL ) // 30 seconds
 #define LONG_PRESS_TIME_MS                  ( 2000LL )

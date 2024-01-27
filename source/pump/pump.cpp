@@ -6,8 +6,10 @@
 #include "intcos.hpp"
 #include "oled.hpp"
 
-// If the ADC_THRESHOLD is exceeded then the pump is considered dry
-#define ADC_THRESHOLD       ( 2450U )
+// If the ADC_THRESHOLD_MAX is exceeded then the pump is considered dry
+#define ADC_THRESHOLD_MAX       ( 2450U )
+// If the adc reads below ADC_THRESHOLD_MIN then it is considered that the adc is not working
+#define ADC_THRESHOLD_MIN       ( 300U )
 // Settle time allows the pump to reach a transient speed before adc starts being measured
 // the pump may run for this amount of ms before it is detected as being dry
 #define PUMP_SETTLE_TIME_MS ( 500U )
@@ -51,7 +53,7 @@ void pump_init( uint8_t pumpControlPin, uint8_t pumpAdcPin )
     }
     else
     {
-        // Not seting up ADC correctly could damage the pump
+        // Not setting up ADC correctly could damage the pump
         for( ;; )
         {
             printf( "ADC setup looks to be incorrect\n" );
@@ -74,11 +76,8 @@ void pump_run( t_globalData* globalDataPtr )
     uint16_t adcValue = adc_read();
     bool emergencyStop = false;
 
-    // Clear the display
-    oled_deinitAll();
-    oled_clear();
     // Draw the redline
-    m_drawRedline( globalDataPtr, ADC_THRESHOLD );
+    m_drawRedline( globalDataPtr, ADC_THRESHOLD_MAX );
     // Init the loading circle, to be used as a motor gauge
     oled_loadingCircleInit( globalDataPtr->hardwareData.displayWidth / 2, globalDataPtr->hardwareData.displayHeight / 2,
                             GAUGE_OUTER_RADIUS, GAUGE_INNER_RADIUS, GAUGE_COLOUR );
@@ -102,7 +101,7 @@ void pump_run( t_globalData* globalDataPtr )
         // Read the ADC
         adcValue = adc_read();
         // Check if we need to emergency stop the motor
-        if( adcValue > ADC_THRESHOLD )
+        if( ( adcValue > ADC_THRESHOLD_MAX ) || ( adcValue < ADC_THRESHOLD_MIN ) )
         {
             emergencyStop = true;
             break;
@@ -113,17 +112,21 @@ void pump_run( t_globalData* globalDataPtr )
     // Stop the pump
     gpio_put( m_pumpControlPin, 0 );
 
-    // UPDATE EXTERNAL DATA HERE
-    if( emergencyStop == true )
-        globalDataPtr->tankState = e_tankState_dry;
-    else
-        globalDataPtr->tankState = e_tankState_ok;
-
     // Update the loading gauge
     oled_loadingCircleDisplay( (uint8_t) ( ( (uint32_t) adcValue * 252UL ) / 0x0FFFUL ) );
     sleep_ms( 50 );
     adcValue = adc_read();
     oled_loadingCircleDisplay( (uint8_t) ( ( (uint32_t) adcValue * 252UL ) / 0x0FFFUL ) );
+
+    // Update the tankState variable
+    if( emergencyStop == true )
+    {
+        globalDataPtr->tankState = e_tankState_dry;
+        oled_writeText( 1, 44, "EMERGENCY", 20, WATER_EMERGENCY_STOP_COLOUR, false );
+        oled_writeText( 1, 64, "STOP", 20, WATER_EMERGENCY_STOP_COLOUR, false );
+    }
+    else
+        globalDataPtr->tankState = e_tankState_ok;
 
     // Deinit the loading circle
     oled_loadingCircleDeinit();

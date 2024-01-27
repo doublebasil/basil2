@@ -27,8 +27,11 @@ static inline void m_sdSuccessfulReadMessage( t_sdCardSettings* sdCardSettingsPt
 static inline void m_sdFailedReadMessage( void );
 /* SYSTEM UPDATE HELPER FUNCTIONS */
 static void m_idleSetup( t_globalData* globalDataPtr );
+static void m_idleUpdate( t_globalData* globalDataPtr );
 static void m_infoSetup( t_globalData* globalDataPtr );
 static void m_infoUpdate( t_globalData* globalDataPtr );
+static void m_wateringSetup( t_globalData* globalDataPtr );
+static void m_wateringUpdate( t_globalData* globalDataPtr );
 /* OTHER */
 static void m_checkInput( t_globalData* globalDataPtr );
 static void m_dayOfTheWeek( char* strPrt, uint8_t strLen, uint8_t dayOfTheWeek );
@@ -145,15 +148,6 @@ void system_reboot( void )
 void system_update( t_globalData* globalDataPtr )
 {
     m_checkInput( globalDataPtr );
-
-    if( globalDataPtr->waterButton == e_input_long )
-    {
-        globalDataPtr->currentState = e_sysState_watering;
-    }
-    else if( globalDataPtr->infoButton == e_input_press )
-    {
-        globalDataPtr->currentState = e_sysState_showInfo;
-    }
     
     switch( globalDataPtr->currentState )
     {
@@ -166,7 +160,7 @@ void system_update( t_globalData* globalDataPtr )
             }
             else
             {
-                // Do nothing
+                m_idleUpdate( globalDataPtr );
             }
         }
         break;
@@ -180,6 +174,19 @@ void system_update( t_globalData* globalDataPtr )
             else
             {
                 m_infoUpdate( globalDataPtr );
+            }
+        }
+        break;
+        case e_sysState_watering:
+        {
+            if( globalDataPtr->previousState != e_sysState_watering )
+            {
+                m_wateringSetup( globalDataPtr );
+                globalDataPtr->previousState = e_sysState_watering;
+            }
+            else
+            {
+                m_wateringUpdate( globalDataPtr );
             }
         }
         break;
@@ -298,7 +305,33 @@ static void m_idleSetup( t_globalData* globalDataPtr )
 {
     oled_deinitAll();
     oled_clear();
-    // ARE THERE ANY WARNINGS TO DISPLAY?
+    // Are there any warnings to display?
+    if( globalDataPtr->tankState == e_tankState_dry )
+    {
+        oled_terminalInit( 20, RGB565_PURE_RED );
+        oled_terminalSetLine( 2 );
+        oled_terminalWrite( "Warning!" );
+        oled_terminalWrite( "Dry tank" );
+    }
+}
+
+static void m_idleUpdate( t_globalData* globalDataPtr )
+{
+    // Check button inputs
+    if( globalDataPtr->waterButton == e_input_long )
+    {
+        globalDataPtr->currentState = e_sysState_watering;
+    }
+    else if( globalDataPtr->infoButton == e_input_press )
+    {
+        globalDataPtr->currentState = e_sysState_showInfo;
+    }
+
+    // Check if it's time to water
+    if( absolute_time_diff_us( get_absolute_time(), globalDataPtr->nextWater ) < 0 )
+    {
+        globalDataPtr->currentState = e_sysState_watering;
+    }
 }
 
 static void m_infoSetup( t_globalData* globalDataPtr )
@@ -469,6 +502,46 @@ static void m_infoUpdate( t_globalData* globalDataPtr )
 
 }
 
+static void m_wateringSetup( t_globalData* globalDataPtr )
+{
+    // Clear the screen
+    oled_deinitAll();
+    oled_clear();
+
+    // Run the pump (important)
+    pump_run( globalDataPtr );
+
+    // Calculate the next watering time
+    m_calculateNextWateringTime( globalDataPtr );
+
+    // Set a state timeout
+    globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
+}
+
+static void m_wateringUpdate( t_globalData* globalDataPtr )
+{
+    // Check for button inputs
+    if( globalDataPtr->infoButton == e_input_press )
+    {
+        printf("info button exited watering state\n");
+        globalDataPtr->currentState = e_sysState_showInfo;
+    }
+    else if( globalDataPtr->waterButton == e_input_long )
+    {
+        // Extend the timeout to prevent continuous watering if the button gets stuck
+        globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
+    }
+    // Check for timeout
+    if( ( is_nil_time( globalDataPtr->stateTimeout ) == false )
+        && ( absolute_time_diff_us( get_absolute_time(), globalDataPtr->stateTimeout ) < 0 ) )
+    {
+        // Timeout
+        printf("watering state timed out\n");
+        globalDataPtr->currentState = e_sysState_idle;
+        return;
+    }
+}
+
 /* OTHER */
 static void m_checkInput( t_globalData* globalDataPtr )
 {
@@ -499,6 +572,7 @@ static void m_checkInput( t_globalData* globalDataPtr )
             // Short press
             infoButtonPreviousState = true;
             globalDataPtr->infoButton = e_input_press;
+            infoButtonHoldStart = get_absolute_time();
         }
     }
     else
@@ -527,6 +601,7 @@ static void m_checkInput( t_globalData* globalDataPtr )
             // Short press
             waterButtonPreviousState = true;
             globalDataPtr->waterButton = e_input_press;
+            waterButtonHoldStart = get_absolute_time();
         }
     }
     else

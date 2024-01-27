@@ -18,6 +18,7 @@ int main( void )
     stdio_init_all();
 
     t_globalData globalData;
+    absolute_time_t mainLoopEndTime;
 
     if( system_initialise( &globalData ) != 0 )
     {
@@ -30,8 +31,9 @@ int main( void )
 
     while( true )
     {
+        mainLoopEndTime = make_timeout_time_ms( MAIN_LOOP_TIME_PERIOD_MS );
         system_update( &globalData );
-        sleep_ms( 50 );
+        sleep_until( mainLoopEndTime );
     }
 
     system_reboot(); // This should never be reached

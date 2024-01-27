@@ -29,6 +29,6 @@ void pump_init( uint8_t pumpControlPin, uint8_t pumpAdcPin );
  *
  * returns: void
  */
-void pump_run( void );
+void pump_run( t_globalData* globalDataPtr );
 
 #endif // define MOTOR_HPP
