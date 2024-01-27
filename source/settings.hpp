@@ -30,6 +30,10 @@
 #define WIFI_PASSWORD_MAX_LEN               ( 32 )
 #define MAX_NUMBER_OF_WATERING_TIMES        ( 5 )
 #define SECONDS_PER_DAY                     ( 24LL * 60LL * 60LL )
+// If the ADC_THRESHOLD_MAX is exceeded then the pump is considered dry
+#define ADC_THRESHOLD_MAX                   ( 2110U )
+// If the adc reads below ADC_THRESHOLD_MIN then it is considered that the adc is not working
+#define ADC_THRESHOLD_MIN                   ( 1000U )
 
 /* --- RGB565 COLOURS --- */
 #define RGB565_FOREST_GREEN                 ( 0x2444 )
@@ -57,6 +61,7 @@
 #define STATE_TIMEOUT_DELAY_MS              ( 15000ULL )
 #define IMAGE_DISPLAY_TIME_MS               ( 5000ULL )
 #define BINDAY_WARNING_TIME_HOURS           ( 9ULL + 12ULL ) // Number of hours before 9am on bin day that the warning should be triggered
+#define WORKING_REBOOT_DELAY_MS             ( 10LL * 24LL * 60LL * 60LL * 1000LL ) // (15 Days) How long it should work normally for before rebooting, as a way of calibrating the rtc
 
 /* --- TYPEDEFS --- */
 typedef enum {
@@ -132,6 +137,7 @@ typedef struct {
     absolute_time_t nextWater = nil_time;
     t_binday currentLandfill;
     t_binday currentRecycling;
+    absolute_time_t rebootTime = nil_time;
 } t_globalData;
 
 #endif // SETTINGS_HPP

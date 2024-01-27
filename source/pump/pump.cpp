@@ -6,10 +6,6 @@
 #include "intcos.hpp"
 #include "oled.hpp"
 
-// If the ADC_THRESHOLD_MAX is exceeded then the pump is considered dry
-#define ADC_THRESHOLD_MAX       ( 2450U )
-// If the adc reads below ADC_THRESHOLD_MIN then it is considered that the adc is not working
-#define ADC_THRESHOLD_MIN       ( 500U )
 // Settle time allows the pump to reach a transient speed before adc starts being measured
 // the pump may run for this amount of ms before it is detected as being dry
 #define PUMP_SETTLE_TIME_MS ( 500U )
@@ -17,7 +13,7 @@
 #define GAUGE_INNER_RADIUS      ( 45 )
 #define GAUGE_OUTER_RADIUS      ( 55 )
 #define GAUGE_REDLINE_THICKNESS ( 1 )
-#define GAUGE_REDLINE_LENGTH    ( 60 )
+#define GAUGE_REDLINE_LENGTH    ( 45 )
 #define GAUGE_COLOUR            ( 0xBE9C )
 #define GAUGE_REDLINE_COLOUR    ( 0b1110000000000000 )
 

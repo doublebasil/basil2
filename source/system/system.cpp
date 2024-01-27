@@ -41,6 +41,7 @@ static bool m_checkRecyclingBinday( t_globalData* globalDataPtr );
 static bool m_checkLandfillBinday( t_globalData* globalDataPtr );
 static void m_calculateNextWateringTime( t_globalData* globalDataPtr );
 static void m_propaganda( void );
+static void m_calibratePump( void );
 
 /* PUBLIC METHOD IMPLEMENTATION */
 int system_initialise( t_globalData* globalDataPtr )
@@ -65,6 +66,9 @@ int system_initialise( t_globalData* globalDataPtr )
     gpio_set_dir( INFO_BUTTON_PIN, GPIO_IN );
     gpio_init( WATER_BUTTON_PIN );
     gpio_set_dir( WATER_BUTTON_PIN, GPIO_IN );
+    // Check if the pump is being manually calibrated
+    if( gpio_get( INFO_BUTTON_PIN ) && gpio_get( WATER_BUTTON_PIN ) )
+        m_calibratePump();
     // Now attempt to read the SD card
     oled_terminalWrite( "" );
     oled_terminalWrite( "Reading SDC..." );
@@ -133,6 +137,8 @@ int system_initialise( t_globalData* globalDataPtr )
 
     globalDataPtr->currentState = e_sysState_showInfo;
     globalDataPtr->stateTimeout = make_timeout_time_ms( STATE_TIMEOUT_DELAY_MS );
+
+    globalDataPtr->rebootTime = make_timeout_time_ms( WORKING_REBOOT_DELAY_MS );
 
     m_calculateNextWateringTime( globalDataPtr );
 
@@ -332,6 +338,12 @@ static void m_idleUpdate( t_globalData* globalDataPtr )
     if( absolute_time_diff_us( get_absolute_time(), globalDataPtr->nextWater ) < 0 )
     {
         globalDataPtr->currentState = e_sysState_watering;
+    }
+    
+    // Check if it's time to reboot
+    else if( absolute_time_diff_us( get_absolute_time(), globalDataPtr->rebootTime ) < 0 )
+    {
+        system_reboot();
     }
 }
 
@@ -857,4 +869,81 @@ static void m_propaganda( void )
     oled_clear();
     oled_terminalSetNewColour( 0x0000 );
     oled_terminalSetNewColour( TERMINAL_INFO_COLOUR );
+}
+
+static void m_calibratePump( void )
+{
+    oled_deinitAll();
+    oled_clear();
+    oled_terminalInit( 12, 0xFFFFU );
+    oled_terminalWrite( "CALIBRATING PUMP" );
+    sleep_ms( 1000 );
+    printf( "---PUMP CALIBRATION---\n" );
+    gpio_put( PUMP_CONTROL_PIN, 1 );
+    sleep_ms( 500 );
+    const uint16_t runTime = 500;
+    const uint16_t samplingPeriod = 50;
+    uint16_t* adcReadings = (uint16_t*) malloc( sizeof(uint16_t) * ( runTime / samplingPeriod ) );
+    if( adcReadings == NULL )
+    {
+        oled_terminalWrite( "MEM ALLOC FAIL" );
+        for( ;; )
+            sleep_ms( 10000 );
+    }
+    if( PUMP_ADC_PIN == 26 )
+        adc_select_input( 0 );
+    else if( PUMP_ADC_PIN == 27 )
+        adc_select_input( 1 );
+    else if( PUMP_ADC_PIN == 28 )
+        adc_select_input( 2 );
+    else
+    {
+        oled_terminalWrite( "ADC SELECT FAILED" );
+        for( ;; )
+            sleep_ms( 10000 );
+    }
+
+    absolute_time_t loopEndTime;
+    for( uint16_t reading = 0U; reading < ( runTime / samplingPeriod ); reading++ )
+    {
+        loopEndTime = make_timeout_time_ms( samplingPeriod );
+        adcReadings[reading] = adc_read();
+        if( ( adcReadings[reading] > ADC_THRESHOLD_MAX ) || ( adcReadings[reading] < ADC_THRESHOLD_MIN ) )
+        {
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+        }
+        printf( "l:%d @ %lu\n", reading, to_ms_since_boot( get_absolute_time() ) );
+        sleep_until( loopEndTime );
+    }
+    printf( "Turning off pump" );
+    gpio_put( PUMP_CONTROL_PIN, 0 );
+
+    // Do some statistics
+    uint16_t minimum = 0xFFFF;
+    uint16_t maximum = 0x0000;
+    uint64_t sum = 0;
+    for( uint16_t reading = 0U; reading < ( runTime / samplingPeriod ); reading++ )
+    {
+        if( minimum > adcReadings[reading] )
+            minimum = adcReadings[reading];
+
+        if( maximum < adcReadings[reading] )
+            maximum = adcReadings[reading];
+
+        sum += adcReadings[reading];
+    }
+    uint64_t mean = sum / ( runTime / samplingPeriod );
+    char text[30];
+    snprintf( text, sizeof(text), "MAX : %u", maximum );
+    oled_terminalWrite( text );
+    snprintf( text, sizeof(text), "MEAN: %llu", mean );
+    oled_terminalWrite( text );
+    snprintf( text, sizeof(text), "MIN : %u", minimum );
+    oled_terminalWrite( text );
+
+    oled_terminalWrite( "" );
+    oled_terminalWrite( "WAITING FOR REBOOT" );
+
+    for( ;; )
+        sleep_ms( 10000 );
 }
