@@ -31,7 +31,7 @@
 #define MAX_NUMBER_OF_WATERING_TIMES        ( 5 )
 #define SECONDS_PER_DAY                     ( 24LL * 60LL * 60LL )
 // If the ADC_THRESHOLD_MAX is exceeded then the pump is considered dry
-#define ADC_THRESHOLD_MAX                   ( 2110U )
+#define ADC_THRESHOLD_MAX                   ( 2150U )
 // If the adc reads below ADC_THRESHOLD_MIN then it is considered that the adc is not working
 #define ADC_THRESHOLD_MIN                   ( 1000U )
 
@@ -53,8 +53,8 @@
 #define MAX_WIFI_CONNECTION_ATTEMPTS        ( 3U )
 #define WIFI_CONNECTION_RETRY_DELAY_MS      ( 30ULL * 1000ULL ) // 30 seconds
 #define LONG_PRESS_TIME_MS                  ( 2000LL )
-// #define MESSAGE_READ_DELAY_MS               ( 500ULL )
-#define MESSAGE_READ_DELAY_MS               ( 0ULL )
+#define MESSAGE_READ_DELAY_MS               ( 100ULL )
+// #define MESSAGE_READ_DELAY_MS               ( 0ULL )
 #define NTP_RESEND_DELAY_US                 ( 10LL * 1000LL * 1000LL )
 #define NTP_MAX_ATTEMPTS                    ( 5 )
 #define DNS_MAX_ATTEMPTS                    ( 5 )

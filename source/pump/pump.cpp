@@ -10,10 +10,10 @@
 // the pump may run for this amount of ms before it is detected as being dry
 #define PUMP_SETTLE_TIME_MS ( 500U )
 
-#define GAUGE_INNER_RADIUS      ( 45 )
-#define GAUGE_OUTER_RADIUS      ( 55 )
+#define GAUGE_INNER_RADIUS      ( 25 )
+#define GAUGE_OUTER_RADIUS      ( 35 )
 #define GAUGE_REDLINE_THICKNESS ( 1 )
-#define GAUGE_REDLINE_LENGTH    ( 45 )
+#define GAUGE_REDLINE_LENGTH    ( 25 )
 #define GAUGE_COLOUR            ( 0xBE9C )
 #define GAUGE_REDLINE_COLOUR    ( 0b1110000000000000 )
 
@@ -72,10 +72,14 @@ void pump_run( t_globalData* globalDataPtr )
     uint16_t adcValue = adc_read();
     bool emergencyStop = false;
 
+    // Add a heading 
+    oled_writeText( 0, 0, "Pump", 20, 0xFFA0, false );
+    oled_writeText( 0, 20, "Voltage", 20, 0xFFA0, false );
+    oled_writeText( 0, 128-12, "VMAX", 12, GAUGE_REDLINE_COLOUR, false );
     // Draw the redline
     m_drawRedline( globalDataPtr, ADC_THRESHOLD_MAX );
     // Init the loading circle, to be used as a motor gauge
-    oled_loadingCircleInit( globalDataPtr->hardwareData.displayWidth / 2, globalDataPtr->hardwareData.displayHeight / 2,
+    oled_loadingCircleInit( globalDataPtr->hardwareData.displayWidth / 2, globalDataPtr->hardwareData.displayHeight - 36U,
                             GAUGE_OUTER_RADIUS, GAUGE_INNER_RADIUS, GAUGE_COLOUR );
 
     // Calculate end times
@@ -124,6 +128,8 @@ void pump_run( t_globalData* globalDataPtr )
     else
         globalDataPtr->tankState = e_tankState_ok;
 
+    adcValue = adc_read();
+    oled_loadingCircleDisplay( (uint8_t) ( ( (uint32_t) adcValue * 252UL ) / 0x0FFFUL ) );
     // Deinit the loading circle
     oled_loadingCircleDeinit();
 }
@@ -132,7 +138,7 @@ void pump_run( t_globalData* globalDataPtr )
 static void m_drawRedline( t_globalData* globalDataPtr, uint16_t redlinePosition )
 {
     uint8_t displayCenterX = globalDataPtr->hardwareData.displayWidth / 2;
-    uint8_t displayCenterY = globalDataPtr->hardwareData.displayHeight / 2;
+    uint8_t displayCenterY = globalDataPtr->hardwareData.displayHeight - 36;
 
     if( redlinePosition > 0x0FFF )
         redlinePosition = 0x0FFF;
