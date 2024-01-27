@@ -9,7 +9,7 @@
 // If the ADC_THRESHOLD_MAX is exceeded then the pump is considered dry
 #define ADC_THRESHOLD_MAX       ( 2450U )
 // If the adc reads below ADC_THRESHOLD_MIN then it is considered that the adc is not working
-#define ADC_THRESHOLD_MIN       ( 300U )
+#define ADC_THRESHOLD_MIN       ( 500U )
 // Settle time allows the pump to reach a transient speed before adc starts being measured
 // the pump may run for this amount of ms before it is detected as being dry
 #define PUMP_SETTLE_TIME_MS ( 500U )
